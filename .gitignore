@@ -16,6 +16,7 @@ MYMETA.json
 MYMETA.yml
 Makefile
 Makefile.old
+Validator-Declarative-*
 _build*
 _build/
 batchrun.output
