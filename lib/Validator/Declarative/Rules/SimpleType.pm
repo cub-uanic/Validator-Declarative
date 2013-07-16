@@ -7,36 +7,186 @@ package Validator::Declarative::Rules::SimpleType;
 # ABSTRACT: Declarative parameters validation - default simple types rules
 
 use Error qw/ :try /;
-require Validator::Declarative;
+use Email::Valid;
 
 #
 # INTERNALS
 #
+sub _validate_bool {
+    my ($input) = @_;
+    throw Error::Simple('does not satisfy BOOL')
+       if ref($input) || $input !~ m/^(1|true|t|yes|y|0|false|f|no|n|)$/i;
+}
+
+sub _validate_float {
+    my ($input) = @_;
+    throw Error::Simple('does not satisfy FLOAT')
+       if ref($input) || $input !~ m/^[+-]?\d+(:?\.\d*)?$/;
+}
+
+sub _validate_int {
+    my ($input) = @_;
+    throw Error::Simple('does not satisfy INT')
+       if ref($input) || $input !~ m/^[+-]?\d+$/;
+}
+
+sub _validate_positive {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy POSITIVE')
+       if ref($input) || $input <= 0;
+}
+
+sub _validate_negative {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy NEGATIVE')
+       if ref($input) || $input >= 0;
+}
+
+sub _validate_id {
+    my ($input) = @_;
+    try {
+        _validate_int($input);
+        _validate_positive($input);
+    }
+    catch Error with {
+        throw Error::Simple('does not satisfy ID');
+    };
+}
+
+sub _validate_email {
+    my ($input) = @_;
+    throw Error::Simple('does not satisfy EMAIL')
+       if ref($input) || !Email::Valid->address($input);
+}
+
+sub _validate_year {
+    my ($input) = @_;
+    try {
+        _validate_int($input);
+        no warnings;
+        die('bad') if ref($input) || $input < 1970 || $input > 3000;
+    }
+    catch Error with {
+        throw Error::Simple('does not satisfy YEAR');
+    };
+}
+
+sub _validate_week {
+    my ($input) = @_;
+    try {
+        _validate_int($input);
+        no warnings;
+        die('bad') if ref($input) || $input < 1 || $input > 53;
+    }
+    catch Error with {
+        throw Error::Simple('does not satisfy WEEK');
+    };
+}
+
+sub _validate_month {
+    my ($input) = @_;
+    try {
+        _validate_int($input);
+        no warnings;
+        die('bad') if ref($input) || $input < 1 || $input > 12;
+    }
+    catch Error with {
+        throw Error::Simple('does not satisfy MONTH');
+    };
+}
+
+sub _validate_day {
+    my ($input) = @_;
+    try {
+        _validate_int($input);
+        no warnings;
+        die('bad') if ref($input) || $input < 1 || $input > 31;
+    }
+    catch Error with {
+        throw Error::Simple('does not satisfy DAY');
+    };
+}
+
+sub _validate_ymd {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy YMD')
+       if ref($input)
+       || $input !~ m/^(\d{4})-(\d{2})-(\d{2})$/
+       || $1 < 1970
+       || $1 > 3000
+       || $2 < 1
+       || $2 > 12
+       || $3 < 1
+       || $3 > 31;
+}
+
+sub _validate_mdy {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy MDY')
+       if ref($input)
+       || $input !~ m|^(\d\d?)/(\d\d?)/(\d\d(?:\d\d)?)$|
+       || $1 < 1
+       || $1 > 12
+       || $2 < 1
+       || $2 > 31
+       || !( $3 > 0 && $3 < 100 || $3 >= 1970 && $3 <= 3000 );
+}
+
+sub _validate_time {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy TIME')
+       if ref($input) || $input !~ m/^(\d\d):(\d\d):(\d\d)$/ || $1 > 23 || $2 > 59 || $3 > 59;
+}
+
+sub _validate_hhmm {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy HHMM')
+       if ref($input) || $input !~ m/^(\d\d):(\d\d)$/ || $1 > 23 || $2 > 59;
+}
+
+sub _validate_timestamp {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy TIMESTAMP')
+       if ref($input) || $input !~ m/^\d+(:?\.\d*)?$/;
+}
+
+sub _validate_msec {
+    my ($input) = @_;
+    no warnings;
+    throw Error::Simple('does not satisfy MSEC')
+       if ref($input) || $input !~ m/^\d+(:?\.\d*)?$/;
+}
 
 sub _register_default_simple_types {
+    require Validator::Declarative;
     Validator::Declarative::register_type(
         ## generic types
-        any      => \&Validator::Declarative::_validate_pass,    # \&validate_any,
-        string   => \&Validator::Declarative::_validate_pass,    # \&validate_any,
-        bool     => \&Validator::Declarative::_validate_pass,    # \&validate_bool,
-        float    => \&Validator::Declarative::_validate_pass,    # \&validate_float,
-        int      => \&Validator::Declarative::_validate_pass,    # \&validate_int,
-        integer  => \&Validator::Declarative::_validate_pass,    # \&validate_int,
-        positive => \&Validator::Declarative::_validate_pass,    # \&validate_positive,
-        negative => \&Validator::Declarative::_validate_pass,    # \&validate_negative,
-        id       => \&Validator::Declarative::_validate_pass,    # \&validate_id,
-        email    => \&Validator::Declarative::_validate_pass,    # \&validate_email,
-        ## datetime- like types
-        year      => \&Validator::Declarative::_validate_pass,    # \&validate_year,
-        week      => \&Validator::Declarative::_validate_pass,    # \&validate_week,
-        month     => \&Validator::Declarative::_validate_pass,    # \&validate_month,
-        day       => \&Validator::Declarative::_validate_pass,    # \&validate_day,
-        ymd       => \&Validator::Declarative::_validate_pass,    # \&validate_ymd,
-        mdy       => \&Validator::Declarative::_validate_pass,    # \&validate_mdy,
-        time      => \&Validator::Declarative::_validate_pass,    # \&validate_time,
-        hhmm      => \&Validator::Declarative::_validate_pass,    # \&validate_hhmm,
-        timestamp => \&Validator::Declarative::_validate_pass,    # \&validate_float,
-        msec      => \&Validator::Declarative::_validate_pass,    # \&validate_float,
+        bool     => \&_validate_bool,
+        float    => \&_validate_float,
+        int      => \&_validate_int,
+        integer  => \&_validate_int,
+        positive => \&_validate_positive,
+        negative => \&_validate_negative,
+        id       => \&_validate_id,
+        email    => \&_validate_email,
+        ## datetime-like types
+        year      => \&_validate_year,
+        week      => \&_validate_week,
+        month     => \&_validate_month,
+        day       => \&_validate_day,
+        ymd       => \&_validate_ymd,
+        mdy       => \&_validate_mdy,
+        time      => \&_validate_time,
+        hhmm      => \&_validate_hhmm,
+        timestamp => \&_validate_timestamp,
+        msec      => \&_validate_msec,
     );
 }
 
