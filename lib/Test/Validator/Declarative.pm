@@ -5,6 +5,8 @@ use warnings;
 
 package Test::Validator::Declarative;
 
+# ABSTRACT: Tests for declarative parameters validation
+
 use Exporter;
 use Test::More;
 use Test::Exception;
@@ -30,7 +32,7 @@ sub check_type_validation {
         : ref($type) eq 'ARRAY' ? $type->[0]
         :                         $type;
 
-    $stringified_type = struct_to_str($type);
+    $stringified_type = _struct_to_str($type);
 
     #
     # check type validation pass
@@ -84,15 +86,15 @@ sub check_converter_validation {
         : ref($type) eq 'ARRAY' ? $type->[0]
         :                         $type;
 
-    $stringified_type = struct_to_str($type);
+    $stringified_type = _struct_to_str($type);
 
     #
     # check type validation pass
     #
     while ( my ( $result, $values ) = each %{ $param{result} } ) {
         if ( $ENV{DEBUG} || $ENV{TEST_DEBUG} || $ENV{DEBUG_TEST} ) {
-            diag( 'Processing values:  ' . struct_to_str($values) );
-            diag( 'Expected result(s): ' . struct_to_str($result) );
+            diag( 'Processing values:  ' . _struct_to_str($values) );
+            diag( 'Expected result(s): ' . _struct_to_str($result) );
         }
 
         $values = [$values] if ref($values) ne 'ARRAY';
@@ -104,12 +106,14 @@ sub check_converter_validation {
         }
         "converter $stringified_type lives on correct parameters for $result";
 
-        is_deeply( \@result, [ ($result) x scalar(@$values) ],
-            "converter $stringified_type returns as expected for $result" );
+        is_deeply(
+            \@result, [ ($result) x scalar(@$values) ],
+            "converter $stringified_type returns as expected for $result"
+        );
     }
 }
 
-sub struct_to_str {
+sub _struct_to_str {
     my ( $struct, $maxdepth, $use_deparse ) = @_;
 
     $maxdepth    ||= 3;
@@ -126,5 +130,88 @@ sub struct_to_str {
     return Data::Dumper::Dumper($struct);
 }
 
-1;
+=head1 SYNOPSIS
+
+    # t/converters/assume_true.t
+    use strict;
+    use warnings;
+
+    use Test::Validator::Declarative qw/ check_converter_validation /;
+
+    check_converter_validation(
+        type   => 'assume_true',
+        result => {
+            1 => [
+                ## all TRUEs
+                'T', 'TRUE', 'Y', 'YES',
+                't', 'true', 'y', 'yes',
+                1,
+                '',               # empty string
+                'some string',    # arbitrary string
+                10,               # arbitrary number
+                'NOT',            # mistype
+                sub { return 'TRUE' },    # coderef
+            ],
+            0 => [
+                ## all FALSEs
+                'F', 'FALSE', 'N', 'NO',
+                'f', 'false', 'n', 'no',
+                0,
+            ],
+        },
+    );
+
+=head1 DESCRIPTION
+
+Simple helpers to write tests for your own types and converters.
+
+=head1 METHODS
+
+=head2 check_type_validation( %params )
+
+Hash %params can accept following keys:
+
+=head3 type
+
+Type definition to be checked - just type name, or something more complex.
+
+=head3 good
+
+Reference to array of values that should pass verification.
+
+=head3 bad
+
+Reference to array of values that should fail verification.
+
+=head2 check_converter_validation( %params )
+
+Hash %params can accept following keys:
+
+=head3 type
+
+Converter definition to be checked - just converter name, or something more
+complex.
+
+=head3 result
+
+Reference to hash of result/values that will be passed thru converter. Values
+can be represented as single value or as arrayref to set of values (where all
+of them should issue same result after conversion).
+
+=head1 EXAMPLES
+
+For more examples, see sources of test suite.
+
+=head1 AUTHOR
+
+Oleg Kostyuk, C<< <cub at cpan.org> >>
+
+=head1 BUGS
+
+Please report any bugs or feature requests to Github
+L<https://github.com/cub-uanic/Validator-Declarative>
+
+=cut
+
+1;    # End of Test::Validator::Declarative
 
