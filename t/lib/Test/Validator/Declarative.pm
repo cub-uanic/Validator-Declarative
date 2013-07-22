@@ -12,7 +12,7 @@ use Data::Dumper;
 use Validator::Declarative;
 
 our @ISA       = qw/ Exporter /;
-our @EXPORT_OK = qw/ check_type_validation /;
+our @EXPORT_OK = qw/ check_type_validation check_converter_validation /;
 
 sub check_type_validation {
     my %param = @_;
@@ -66,6 +66,47 @@ sub check_type_validation {
         like $error_text, qr/^$regexp/m, "message about $param";
     }
 
+}
+
+sub check_converter_validation {
+    my %param = @_;
+
+    # for lives_ok + is_deeply + throws_ok + message for each error
+    plan tests => 2 * values %{ $param{result} };
+
+    my ( $type, $aliased_type, @result, $type_name, $stringified_type );
+
+    $type = $param{type};
+    $aliased_type = $param{aliased_to} || '';
+
+    ($type_name) =    # there should be exactly one k/v pair
+          ref($type) eq 'HASH'  ? keys(%$type)
+        : ref($type) eq 'ARRAY' ? $type->[0]
+        :                         $type;
+
+    $stringified_type = struct_to_str($type);
+
+    #
+    # check type validation pass
+    #
+    while ( my ( $result, $values ) = each %{ $param{result} } ) {
+        if ( $ENV{DEBUG} || $ENV{TEST_DEBUG} || $ENV{DEBUG_TEST} ) {
+            diag( 'Processing values:  ' . struct_to_str($values) );
+            diag( 'Expected result(s): ' . struct_to_str($result) );
+        }
+
+        $values = [$values] if ref($values) ne 'ARRAY';
+
+        lives_ok {
+            @result =
+                Validator::Declarative::validate(
+                $values => [ map { sprintf( "param_${type_name}_%02d", $_ ) => $type } 1 .. scalar @$values ] );
+        }
+        "converter $stringified_type lives on correct parameters for $result";
+
+        is_deeply( \@result, [ ($result) x scalar(@$values) ],
+            "converter $stringified_type returns as expected for $result" );
+    }
 }
 
 sub struct_to_str {

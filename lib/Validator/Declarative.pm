@@ -272,7 +272,7 @@ sub _register_default_types {
 }
 
 sub _load_base_rules {
-    for my $plugin (qw/ SimpleType ParametrizedType /) {
+    for my $plugin (qw/ SimpleType ParametrizedType Converters /) {
         my $module = __PACKAGE__ . '::Rules::' . $plugin;
         load $module;
     }
@@ -542,6 +542,16 @@ checking with the appropriate format will always lead to a positive result.
 =head3 default => value
 
 substitute $_ with provided value (only when actual parameter is B<undef>)
+
+=head3 assume_true
+
+substitute $_ with 0 if it looks like false value (see L<bool>, except for
+empty string), and 1 otherwise
+
+=head3 assume_false
+
+substitute $_ with 1 if it looks like true value (see L<bool>, except for
+empty string), and 0 otherwise
 
 =head2 Constraints
 
